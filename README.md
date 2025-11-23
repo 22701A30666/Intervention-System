@@ -122,3 +122,49 @@ This guarantees forward progress without mentor-induced deadlocks while preservi
 - Keep secrets in environment variables; never commit `.env`.
 - For production, ensure `DATABASE_URL` is set. The in-memory fallback is only for local preview.
 - You can swap Email with Slack easily in the n8n workflow.
+
+## CI/CD in This Repository
+
+This repo is wired for one-click deployments via GitHub Actions.
+
+- Backend → Fly.io
+  - Workflow: `.github/workflows/backend-fly-deploy.yml`
+  - Required repo secrets:
+    - `FLY_API_TOKEN` → Personal access token from Fly.io
+    - `DATABASE_URL` → Postgres connection string (e.g., Supabase `postgresql://...`)
+    - `N8N_WEBHOOK_URL` → Your n8n webhook endpoint (e.g., `https://<your-n8n>/webhook/mentor-dispatcher`)
+  - App config: `fly.toml` with `backend/Dockerfile`
+  - Trigger: Push to `main` touching `backend/**` or `fly.toml`
+  - After deploy, copy the public backend URL (e.g., `https://<your-fly-app>.fly.dev`).
+
+- Frontend → GitHub Pages
+  - Workflow: `.github/workflows/frontend-pages.yml`
+  - Required repo secret:
+    - `EXPO_PUBLIC_API_URL` → The backend public URL (from Fly)
+  - Trigger: Push to `main` (builds `frontend` and exports static site)
+  - Result: Pages will publish to `https://<owner>.github.io/<repo>` automatically.
+
+### Setup Steps (once)
+1) Fly.io (backend)
+   - Create the Fly app: `flyctl apps create intervention-backend` (or rename in `fly.toml`).
+   - In repo Settings → Secrets, add: `FLY_API_TOKEN`, `DATABASE_URL`, `N8N_WEBHOOK_URL`.
+   - Push to `main` to trigger backend deploy.
+
+2) GitHub Pages (frontend)
+   - In repo Settings → Pages, set Source to “GitHub Actions”.
+   - In repo Settings → Secrets, add: `EXPO_PUBLIC_API_URL` with the backend URL.
+   - Push to `main` to trigger frontend deploy.
+
+3) n8n (automation)
+   - Import `n8n/workflow.json` into n8n.
+   - Configure Email node (SMTP or Slack) and publish.
+   - Copy webhook URL and set it as `N8N_WEBHOOK_URL` secret.
+   - Ensure the Wait node uses “Resume via Webhook”; approval emails include the auto-generated resume link.
+
+### Health & Verification
+- Backend: `GET /health` returns `{ ok: true }`.
+- Frontend: loads status from `GET /student/:id/status` using `EXPO_PUBLIC_API_URL`.
+- Smoke test:
+  - Submit bad check-in → app locks and backend returns `Pending Mentor Review`.
+  - Approval link → n8n calls `/assign-intervention` → app shows the remedial task.
+  - Click “Mark Complete” → status returns to `On Track`.
