@@ -37,7 +37,8 @@ jobs:
         working-directory: frontend
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
-        run: npx expo export -p web --output-dir dist
+          PUBLIC_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}
+        run: npx expo export -p web --output-dir dist --public-url "$PUBLIC_URL"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

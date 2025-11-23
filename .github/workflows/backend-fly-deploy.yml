@@ -24,7 +24,7 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           N8N_WEBHOOK_URL: ${{ secrets.N8N_WEBHOOK_URL }}
         run: |
-          # Inject env into fly deploy using build-time secrets
-          flyctl deploy --remote-only \
-            --build-secret DATABASE_URL=${DATABASE_URL} \
-            --build-secret N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+          # Set runtime secrets for the Fly app
+          flyctl secrets set DATABASE_URL=${DATABASE_URL} N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL}
+          # Deploy backend container
+          flyctl deploy --remote-only
