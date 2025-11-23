@@ -1,0 +1,74 @@
+{
+  "name": "Mentor Dispatcher",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "mentor-dispatcher",
+        "responseMode": "onReceived",
+        "options": {
+          "responseData": {
+            "response": "Webhook received. Mentor notification sent; awaiting approval."
+          }
+        }
+      },
+      "id": "Webhook_Trigger",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "subject": "Student Needs Intervention",
+        "text": "Student {{$json.student_id}} failed check-in. Quiz: {{$json.quiz_score}}, Focus: {{$json.focus_minutes}}.\nApprove remedial task: Read Chapter 4\nClick to approve: {{$node[\"Wait for Mentor\"].parameter.resumeWebhookUrl}}",
+        "additionalFields": {
+          "toAddresses": ["you@example.com"]
+        }
+      },
+      "id": "Send_Email",
+      "name": "Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [460, 200]
+    },
+    {
+      "parameters": {
+        "options": {
+          "resume": "webhook"
+        }
+      },
+      "id": "Wait",
+      "name": "Wait for Mentor",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [460, 380]
+    },
+    {
+      "parameters": {
+        "url": "{{ $json[\"backend_assign_url\"] || 'https://your-backend.example.com/assign-intervention' }}",
+        "options": {},
+        "authentication": "none",
+        "queryParameters": [],
+        "jsonParameters": true,
+        "sendBody": true,
+        "bodyParametersJson": "={ \n  \"student_id\": $json.student_id, \n  \"intervention_id\": $json.intervention_id, \n  \"task\": 'Read Chapter 4' \n}"
+      },
+      "id": "HTTP_Request",
+      "name": "Assign Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 1,
+      "position": [740, 380]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [ { "node": "Email", "type": "main", "index": 0 } ],
+        [ { "node": "Wait for Mentor", "type": "main", "index": 0 } ]
+      ]
+    },
+    "Wait for Mentor": {
+      "main": [ [ { "node": "Assign Task", "type": "main", "index": 0 } ] ]
+    }
+  }
+}
